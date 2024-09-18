@@ -11,6 +11,8 @@
           ref="personSelect"
           :items="membres"
           text="👤 Choisissez une personne :"
+          :allowOther="true"
+          @onAddPerson="addNewPersonne"
           @onSelect="handleMembreSelect"
           class="members"
         />
@@ -100,6 +102,35 @@ export default {
     // Met à jour le membre sélectionné
     handleMembreSelect(membre) {
       this.selectedMembre = membre
+    },
+
+    async addNewPersonne(nom) {
+      try {
+        if (!nom) {
+          throw new Error('Le nom de la personne est manquant.')
+        }
+
+        // Ajouter la nouvelle personne dans Firestore
+        const docRef = await addDoc(collection(db, 'membres'), {
+          name: nom, // Assurez-vous que le nom est bien passé
+          isResp: false
+        })
+
+        console.log('Nouveau membre ajouté avec ID:', docRef.id)
+
+        // Ajouter le nouveau membre dans la liste des membres disponibles
+        this.membres.push(nom)
+
+        this.selectedMembre = nom
+
+        // Réinitialiser la sélection dans le composant ListChoice
+        this.$refs.personSelect.resetSelect()
+        this.$refs.personSelect.selectedItem = nom
+
+        alert(`${nom} a été ajouté avec succès !`)
+      } catch (error) {
+        console.error("Erreur lors de l'ajout d'un nouveau membre :", error)
+      }
     },
 
     // Met à jour le moyen de paiement sélectionné

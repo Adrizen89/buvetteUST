@@ -61,8 +61,10 @@
     <!-- Modale pour afficher le tableau complet -->
     <div v-if="isModalOpen" class="modal-backdrop" @click="closeModal">
       <div class="modal-content" @click.stop>
-        <h3>{{ tableTitle }}</h3>
-        <button @click="closeModal" class="close-button">Fermer</button>
+        <div class="modal-content-header">
+          <h3>{{ tableTitle }}</h3>
+          <button @click="closeModal" class="close-button">Fermer</button>
+        </div>
         <div class="modal-table-content">
           <table>
             <thead>
@@ -362,5 +364,21 @@ th {
   height: 3vh;
   width: 50%;
   cursor: pointer;
+}
+.modal-content-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+.modal-content-header h3 {
+  width: 80%;
+  font-weight: bold;
+  font-size: 1.3rem;
+}
+.modal-table-content table {
+  border-collapse: collapse;
+}
+.modal-table-content table tr {
+  border-bottom: 1px dashed black;
 }
 </style>
