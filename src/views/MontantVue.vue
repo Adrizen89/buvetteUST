@@ -9,7 +9,7 @@
         <!-- Liste des membres -->
         <ListChoice
           ref="personSelect"
-          :items="membres"
+          :items="filteredMembres"
           text="👤 Choisissez une personne :"
           :allowOther="true"
           @onAddPerson="addNewPersonne"
@@ -21,8 +21,21 @@
         <MontantChoice
           ref="montantSelect"
           :montants="montantsDisponibles"
-          @montant-selected="updateMontant"
+          @montant-selected="handleMontantSelection"
         />
+        <!-- Champ pour montant personnalisé si "Autre" est sélectionné -->
+        <div class="modal-other" @click="closeModal" v-if="isCustomMontant">
+          <div class="modal-content" @click.stop>
+            <h3>Choississez un montant</h3>
+            <input
+              type="number"
+              v-model="customMontant"
+              placeholder="Entrez un montant"
+              @input="updateCustomMontant"
+            />
+            <button class="btn-other" @click="validateCustomMontant">Valider</button>
+          </div>
+        </div>
 
         <!-- Checkbox pour la tournée payée ou non -->
         <div class="checkbox">
@@ -76,7 +89,9 @@ export default {
       tourneePayee: false,
       membres: [],
       moyensPaiement: ['Lydia', 'Paylib', 'Espèces'],
-      montantsDisponibles: [2, 5, 10, 20, 30, 40, 50, 60]
+      isCustomMontant: false, // Contrôle de l'affichage du champ personnalisé
+      customMontant: null,
+      montantsDisponibles: [2, 5, 10, 20, 30, 40, 50, 'Autre']
     }
   },
   components: {
@@ -94,6 +109,7 @@ export default {
         console.error('Erreur lors de la récupération des membres :', error)
       }
     },
+
     // Met à jour le montant de la tournée
     updateMontant(montant) {
       this.montantTournée = montant
@@ -132,6 +148,30 @@ export default {
         console.error("Erreur lors de l'ajout d'un nouveau membre :", error)
       }
     },
+    closeModal() {
+      this.isCustomMontant = false
+    },
+
+    handleMontantSelection(montant) {
+      if (montant == 'Autre') {
+        this.isCustomMontant = true
+        this.montantTournée = 0
+      } else {
+        this.isCustomMontant = false
+        this.montantTournée = montant
+      }
+    },
+    updateCustomMontant() {
+      this.montantTournée = this.customMontant
+    },
+    validateCustomMontant() {
+      if (this.customMontant && this.customMontant > 0) {
+        this.montantTournée = this.customMontant // Appliquer le montant personnalisé
+        this.isCustomMontant = false // Cacher le champ personnalisé après validation
+      } else {
+        alert('Veuillez entrer un montant valide.')
+      }
+    },
 
     // Met à jour le moyen de paiement sélectionné
     handlePaiementSelect(paiement) {
@@ -139,7 +179,7 @@ export default {
     },
     // Méthode pour enregistrer la tournée dans Firestore
     async saveTournee() {
-      if (!this.selectedMembre || !this.montantTournée) {
+      if (!this.selectedMembre || !this.montantTournée || this.montantTournée <= 0) {
         alert('Veuillez sélectionner un membre et un montant.')
         return
       }
@@ -235,6 +275,49 @@ main {
 }
 p span {
   color: #1ab798;
+  font-weight: bold;
+}
+
+.modal-other {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  width: 80%;
+  border-radius: 10px;
+  height: 20%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+.modal-other .modal-content h3 {
+  font-weight: bold;
+  font-size: 1.3rem;
+}
+
+.modal-other .modal-content input {
+  border: 1px solid black;
+  border-radius: 5px;
+  width: 80%;
+  height: 5vh;
+}
+
+.btn-other {
+  background-color: #1ab798;
+  height: 5vh;
+  border-radius: 5px;
+  color: #fff;
+  width: 80%;
   font-weight: bold;
 }
 </style>
