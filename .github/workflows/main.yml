@@ -1,0 +1,33 @@
+name: Build and Deploy to Firebase
+
+on:
+  push:
+    branches:
+      - main # Déclenche le workflow sur les pushes à la branche "main"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Étape 1 : Télécharger le code source du dépôt
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Étape 2 : Configurer Node.js (spécifie la version de Node.js selon ton projet)
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      # Étape 3 : Installer les dépendances
+      - name: Install dependencies
+        run: npm install
+
+      # Étape 4 : Construire le projet (si nécessaire)
+      - name: Build project
+        run: npm run build
+
+      # Étape 5 : Déployer sur Firebase
+      - name: Deploy to Firebase
+        run: firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
