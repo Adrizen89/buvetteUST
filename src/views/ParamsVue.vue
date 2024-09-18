@@ -12,7 +12,7 @@
           <th>✅</th>
           <!-- Colonne pour la checkbox -->
           <th>Responsable</th>
-          <th>Moyen de Paiement</th>
+          <th>Moyens de Paiement</th>
         </tr>
       </thead>
       <tbody>
@@ -27,16 +27,16 @@
           </td>
           <td>{{ responsable.name }}</td>
           <td>
-            <select
-              class="selectMoyen"
-              v-model="responsable.moyenGere"
-              @change="updateResponsable(responsable)"
-            >
-              <option value="" disabled selected>Choisir un moyen de paiement</option>
-              <option v-for="moyen in moyensPaiement" :key="moyen" :value="moyen">
-                {{ moyen }}
-              </option>
-            </select>
+            <!-- Boucle pour afficher une checkbox pour chaque moyen de paiement -->
+            <div v-for="moyen in moyensPaiement" :key="moyen" class="checkbox-item">
+              <input
+                type="checkbox"
+                :value="moyen"
+                v-model="responsable.moyenGere"
+                @change="updateResponsable(responsable)"
+              />
+              <label>{{ moyen }}</label>
+            </div>
           </td>
         </tr>
 
@@ -53,17 +53,17 @@
             </select>
           </td>
           <td>
-            <select v-if="newResponsable" v-model="newMoyenPaiement">
-              <option value="" disabled selected>Choisir un moyen de paiement</option>
-              <option v-for="moyen in moyensPaiement" :key="moyen" :value="moyen">
-                {{ moyen }}
-              </option>
-            </select>
+            <div v-if="newResponsable">
+              <div v-for="moyen in moyensPaiement" :key="moyen" class="checkbox-item">
+                <input type="checkbox" :value="moyen" v-model="newMoyensPaiement" />
+                <label>{{ moyen }}</label>
+              </div>
+            </div>
           </td>
           <td>
             <button
               class="btnAdd"
-              v-if="newResponsable && newMoyenPaiement"
+              v-if="newResponsable && newMoyensPaiement.length"
               @click="handleAddResponsable"
             >
               Ajouter
@@ -85,7 +85,7 @@ export default {
       membres: [], // Les membres seront chargés depuis Firestore
       moyensPaiement: ['Lydia', 'Paylib', 'Espèces'],
       newResponsable: null, // Stocker le membre à ajouter comme responsable
-      newMoyenPaiement: null // Stocker le moyen de paiement du nouveau responsable
+      newMoyensPaiement: [] // Stocker plusieurs moyens de paiement pour le nouveau responsable
     }
   },
   computed: {
@@ -106,7 +106,6 @@ export default {
           id: doc.id,
           ...doc.data()
         }))
-        this.calculerTotalGere() // Calculer les totaux pour les responsables après avoir chargé les membres
       } catch (error) {
         console.error('Erreur lors de la récupération des membres :', error)
       }
@@ -117,7 +116,6 @@ export default {
         await updateDoc(membreRef, {
           isResp: membre.isResp // Mettre à jour Firestore avec la nouvelle valeur
         })
-        this.calculerTotalGere() // Recalculer les totaux après modification
       } catch (error) {
         console.error('Erreur lors de la mise à jour du responsable :', error)
       }
@@ -126,25 +124,23 @@ export default {
       if (membre.isResp) {
         const membreRef = doc(db, 'membres', membre.id)
         await updateDoc(membreRef, {
-          moyenGere: membre.moyenGere || '' // Mettre à jour le moyen de paiement s'il existe
+          moyenGere: membre.moyenGere || [] // Mettre à jour le tableau des moyens de paiement dans Firestore
         })
       }
     },
     async handleAddResponsable() {
-      if (this.newResponsable && this.newMoyenPaiement) {
+      if (this.newResponsable && this.newMoyensPaiement.length) {
         const membreRef = doc(db, 'membres', this.newResponsable.id)
         await updateDoc(membreRef, {
           isResp: true,
-          moyenGere: this.newMoyenPaiement
+          moyenGere: this.newMoyensPaiement // Stocker plusieurs moyens de paiement dans un tableau
         })
 
         this.newResponsable.isResp = true
-        this.newResponsable.moyenGere = this.newMoyenPaiement
+        this.newResponsable.moyenGere = this.newMoyensPaiement
 
         this.newResponsable = null
-        this.newMoyenPaiement = null
-
-        this.calculerTotalGere() // Recalculer le total géré après l'ajout
+        this.newMoyensPaiement = []
       }
     },
     goBack() {
@@ -191,6 +187,11 @@ th,
 td {
   border-bottom: 1px solid #ddd;
   height: 5vh;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
 }
 
 select {
