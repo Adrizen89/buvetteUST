@@ -9,7 +9,7 @@
         <!-- Liste des membres -->
         <ListChoice
           ref="personSelect"
-          :items="filteredMembres"
+          :items="membres"
           text="👤 Choisissez une personne :"
           :allowOther="true"
           @onAddPerson="addNewPersonne"
