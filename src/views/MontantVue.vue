@@ -110,10 +110,9 @@ export default {
       searchTerm: '',
       moyensPaiement: ['Lydia', 'Paylib', 'Espèces'],
       montantsDisponibles: [2, 5, 10, 20, 30, 40, 50, 'Autre'],
-      value: []
-      isCustomMontant: false, // Contrôle de l'affichage du champ personnalisé
-      customMontant: null,
-      montantsDisponibles: [2, 5, 10, 20, 30, 40, 50, 'Autre']
+
+      isCustomMontant: false,
+      customMontant: null
     }
   },
   components: {
@@ -245,23 +244,7 @@ export default {
         console.error("Erreur lors de l'enregistrement de la tournée :", error)
       }
     },
-    handleMontantSelection(montant) {
-      if (montant == 'Autre') {
-        this.isCustomMontant = true
-        this.montantTournée = 0
-      } else {
-        this.isCustomMontant = false
-        this.montantTournée = montant
-      }
-    },
-    validateCustomMontant() {
-      if (this.customMontant && this.customMontant > 0) {
-        this.montantTournée = this.customMontant // Appliquer le montant personnalisé
-        this.isCustomMontant = false // Cacher le champ personnalisé après validation
-      } else {
-        alert('Veuillez entrer un montant valide.')
-      }
-    },
+
     // Réinitialiser le formulaire après l'enregistrement
     resetForm() {
       this.$refs.personSelect.resetSelect()
