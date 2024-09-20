@@ -7,22 +7,51 @@
     <main>
       <div class="card">
         <!-- Liste des membres -->
-        <ListChoice
-          ref="personSelect"
-          :items="membres"
-          text="👤 Choisissez une personne :"
-          :allowOther="true"
-          @onAddPerson="addNewPersonne"
-          @onSelect="handleMembreSelect"
-          class="members"
-        />
+
+        <div class="multi-select">
+          <label class="typo__label">👤 Choisissez une personne :</label>
+          <multiselect
+            v-model="selectedMembre"
+            :options="filteredMembres"
+            :multiple="false"
+            :close-on-select="true"
+            :clear-on-select="false"
+            :preserve-search="true"
+            :allow-empty="false"
+            deselect-label=""
+            placeholder="Recherchez une personne"
+            label="name"
+            track-by="name"
+            :preselect-first="true"
+          >
+            <template #selection="{ values, isOpen }">
+              <span class="multiselect__single" v-if="values.length" v-show="!isOpen"
+                >{{ values.length }} options selected</span
+              >
+            </template>
+          </multiselect>
+        </div>
 
         <!-- Sélection du montant -->
         <MontantChoice
           ref="montantSelect"
           :montants="montantsDisponibles"
-          @montant-selected="updateMontant"
+          @montant-selected="handleMontantSelection"
         />
+
+        <!-- Champ pour montant personnalisé si "Autre" est sélectionné -->
+        <div class="modal-other" @click="closeModal" v-if="isCustomMontant">
+          <div class="modal-content" @click.stop>
+            <h3>Choississez un montant</h3>
+            <input
+              type="number"
+              v-model="customMontant"
+              placeholder="Entrez un montant"
+              @input="updateCustomMontant"
+            />
+            <button class="btn-other" @click="validateCustomMontant">Valider</button>
+          </div>
+        </div>
 
         <!-- Checkbox pour la tournée payée ou non -->
         <div class="checkbox">
@@ -45,11 +74,11 @@
         <p>🍻 Récapitulatif :</p>
         <p v-if="tourneePayee">
           Une tournée de <span>{{ montantTournée }}</span> € est payée par
-          <span>{{ selectedMembre }}</span> avec <span>{{ selectedPaiement }}</span> !
+          <span>{{ selectedMembre.name }}</span> avec <span>{{ selectedPaiement }}</span> !
         </p>
         <p v-else>
           Une dette de <span>{{ montantTournée }}</span> € est attribuée à
-          <span>{{ selectedMembre }}</span> !
+          <span>{{ selectedMembre.name }}</span> !
         </p>
       </div>
 
@@ -63,8 +92,10 @@
 import ListChoice from '../components/ListChoice.vue'
 import MontantChoice from '../components/MontantChoice.vue'
 import BtnValidate from '../components/BtnValidate.vue'
+import Multiselect from 'vue-multiselect'
 import { collection, getDocs, addDoc } from 'firebase/firestore'
 import { db } from '@/firebase/index'
+import 'vue-multiselect/dist/vue-multiselect.css'
 
 export default {
   name: 'MontantVue',
@@ -75,24 +106,46 @@ export default {
       selectedPaiement: '', // Valeur par défaut pour le moyen de paiement
       tourneePayee: false,
       membres: [],
+      filteredMembres: [],
+      searchTerm: '',
       moyensPaiement: ['Lydia', 'Paylib', 'Espèces'],
-      montantsDisponibles: [2, 5, 10, 20, 30, 40, 50, 60]
+      montantsDisponibles: [2, 5, 10, 20, 30, 40, 50, 'Autre'],
+      value: []
     }
   },
   components: {
     ListChoice,
     MontantChoice,
-    BtnValidate
+    BtnValidate,
+    Multiselect
   },
   methods: {
     async fetchMembres() {
       try {
         const membresCollection = collection(db, 'membres')
         const membresSnapshot = await getDocs(membresCollection)
-        this.membres = membresSnapshot.docs.map((doc) => doc.data().name) // Assurez-vous que "name" existe dans Firestore
+        this.membres = membresSnapshot.docs.map((doc) => ({
+          name: doc.data().name // Assurez-vous que "name" est bien une clé dans Firestore
+        }))
+        this.filteredMembres = this.membres
       } catch (error) {
         console.error('Erreur lors de la récupération des membres :', error)
       }
+    },
+    // Filtrer et rechercher un membre
+    filterMembres() {
+      const searchLowerCase = this.searchTerm.toLowerCase()
+
+      // Filtre les membres dont le nom contient le terme de recherche
+      this.filteredMembres = this.membres.filter((membre) =>
+        membre.toLowerCase().includes(searchLowerCase)
+      )
+    },
+
+    selectMembre(membre) {
+      this.selectedMembre = membre
+      this.filteredMembres = [] // Cache la liste après la sélection
+      this.searchTerm = '' // Réinitialise le champ de recherche
     },
     // Met à jour le montant de la tournée
     updateMontant(montant) {
@@ -100,8 +153,9 @@ export default {
     },
 
     // Met à jour le membre sélectionné
-    handleMembreSelect(membre) {
-      this.selectedMembre = membre
+    handleMembreSelect(selectedMembre) {
+      this.selectedMembre = selectedMembre
+      console.log('Membre sélectionné :', this.selectedMembre)
     },
 
     async addNewPersonne(nom) {
@@ -147,7 +201,7 @@ export default {
       try {
         // Ajout de la nouvelle tournée dans Firestore
         const docRef = await addDoc(collection(db, 'tournees'), {
-          name: this.selectedMembre,
+          name: this.selectedMembre.name,
           montant: this.montantTournée,
           paye: this.tourneePayee,
           dette: !this.tourneePayee,
@@ -161,6 +215,23 @@ export default {
         this.resetForm()
       } catch (error) {
         console.error("Erreur lors de l'enregistrement de la tournée :", error)
+      }
+    },
+    handleMontantSelection(montant) {
+      if (montant == 'Autre') {
+        this.isCustomMontant = true
+        this.montantTournée = 0
+      } else {
+        this.isCustomMontant = false
+        this.montantTournée = montant
+      }
+    },
+    validateCustomMontant() {
+      if (this.customMontant && this.customMontant > 0) {
+        this.montantTournée = this.customMontant // Appliquer le montant personnalisé
+        this.isCustomMontant = false // Cacher le champ personnalisé après validation
+      } else {
+        alert('Veuillez entrer un montant valide.')
       }
     },
     // Réinitialiser le formulaire après l'enregistrement
@@ -235,6 +306,52 @@ main {
 }
 p span {
   color: #1ab798;
+  font-weight: bold;
+}
+.multi-select {
+  width: 80%;
+  margin: auto;
+}
+.modal-other {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background-color: #fff;
+  width: 80%;
+  border-radius: 10px;
+  height: 20%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+}
+.modal-other .modal-content h3 {
+  font-weight: bold;
+  font-size: 1.3rem;
+}
+
+.modal-other .modal-content input {
+  border: 1px solid black;
+  border-radius: 5px;
+  width: 80%;
+  height: 5vh;
+}
+
+.btn-other {
+  background-color: #1ab798;
+  height: 5vh;
+  border-radius: 5px;
+  color: #fff;
+  width: 80%;
   font-weight: bold;
 }
 </style>
