@@ -53,7 +53,7 @@
           <td v-if="showDebt && !isMembersList">{{ tournee.moyen || 'N/A' }}</td>
           <td v-if="showDebt && !isMembersList">{{ tournee.dette ? '✔️' : '✖️' }}</td>
           <td v-if="!isMembersList">
-            <button class="btn-delete" @click="deleteRow(index)">🗑</button>
+            <button class="btn-delete" @click="deleteRow(tournee.id)">🗑</button>
           </td>
         </tr>
       </tbody>
@@ -96,7 +96,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(tournee, index) in sortedData" :key="index">
+              <tr v-for="(tournee, index) in fullData" :key="index">
                 <td v-if="!isMembersList">{{ tournee.date }}</td>
                 <td>{{ tournee.name }}</td>
                 <td v-if="isMembersList">{{ tournee.totalPaid }}€</td>
@@ -204,6 +204,17 @@ export default {
     },
     sortedData() {
       // Faire une copie des données avant de les trier
+      return [...this.filteredData]
+        .sort((a, b) => {
+          let modifier = this.sortDirection === '▲' ? 1 : -1
+          if (a[this.currentSort] < b[this.currentSort]) return -1 * modifier
+          if (a[this.currentSort] > b[this.currentSort]) return 1 * modifier
+          return 0
+        })
+        .slice(0, this.rowLimit) // Limite le tableau à 5 lignes après le tri
+    },
+    fullData() {
+      // Retourner toutes les données sans limite pour la modale
       return [...this.filteredData].sort((a, b) => {
         let modifier = this.sortDirection === '▲' ? 1 : -1
         if (a[this.currentSort] < b[this.currentSort]) return -1 * modifier
@@ -233,21 +244,20 @@ export default {
         console.error('Erreur lors de la récupération des transactions de tournées:', error)
       }
     },
-    async deleteRow(index) {
+    async deleteRow(id) {
       try {
-        // Récupérer l'ID de la transaction à partir du tableau local des transactions
-        const transaction = this.transactions[index]
+        // Trouver la transaction à partir de l'ID
+        const transactionIndex = this.transactions.findIndex((tournee) => tournee.id === id)
 
-        // Vérifier si la transaction existe et a un ID
-        if (!transaction || !transaction.id) {
-          throw new Error('Transaction introuvable ou ID manquant.')
+        if (transactionIndex === -1) {
+          throw new Error('Transaction introuvable.')
         }
 
         // Supprimer la transaction de Firestore
-        await deleteDoc(doc(db, 'tournees', transaction.id))
+        await deleteDoc(doc(db, 'tournees', id))
 
         // Supprimer l'élément du tableau local des transactions
-        this.transactions.splice(index, 1)
+        this.transactions.splice(transactionIndex, 1)
 
         alert('Transaction supprimée avec succès.')
       } catch (error) {
